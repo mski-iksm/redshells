@@ -1,4 +1,6 @@
 from typing import Any, Dict
+import os
+from logging import getLogger
 
 import luigi
 import sklearn
@@ -7,6 +9,8 @@ import tensorflow as tf
 import gokart
 from redshells.model.gcmc_dataset import GcmcDataset, GcmcGraphDataset
 from redshells.model.graph_convolutional_matrix_completion import GraphConvolutionalMatrixCompletion
+
+logger = getLogger(__name__)
 
 
 class NoneTask(gokart.TaskOnKart):
@@ -48,6 +52,7 @@ class TrainGraphConvolutionalMatrixCompletion(gokart.TaskOnKart):
             report=self.make_target('model_report/report.txt'))
 
     def run(self):
+        logger.info(f'model={GraphConvolutionalMatrixCompletion}')
         tf.reset_default_graph()
         df = self.load_data_frame('train_data', required_columns={self.user_column_name, self.item_column_name, self.rating_column_name})
         user_features = self.load('user_features')
