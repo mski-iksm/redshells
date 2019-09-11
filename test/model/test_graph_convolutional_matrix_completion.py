@@ -159,6 +159,38 @@ class GraphConvolutionalMatrixCompletionTest(unittest.TestCase):
         output_embedding = {k: v for k, v in zip(*item_feature)}
         np.testing.assert_almost_equal(output_embedding[240], output_embedding[243])
 
+    def test_get_item_feature_layer_weights(self):
+        n_users = 101
+        n_items = 233
+        n_data = 3007
+        am1 = _make_sparse_matrix(n_users, n_items, n_data)
+        am2 = 2 * _make_sparse_matrix(n_users, n_items, n_data)
+        adjacency_matrix = am1 + am2
+        user_ids = adjacency_matrix.tocoo().row
+        item_ids = adjacency_matrix.tocoo().col
+        ratings = adjacency_matrix.tocoo().data
+        item_features = [{i: np.array([i]) for i in range(n_items)}]
+        dataset = GcmcDataset(user_ids, item_ids, ratings, item_features=item_features)
+        graph_dataset = GcmcGraphDataset(dataset, test_size=0.1)
+        encoder_hidden_size = 100
+        encoder_size = 100
+        scope_name = 'GraphConvolutionalMatrixCompletionGraph'
+        model = GraphConvolutionalMatrixCompletion(
+            graph_dataset=graph_dataset,
+            encoder_hidden_size=encoder_hidden_size,
+            encoder_size=encoder_size,
+            scope_name=scope_name,
+            batch_size=1024,
+            epoch_size=10,
+            learning_rate=0.01,
+            dropout_rate=0.7,
+            normalization_type='symmetric')
+        model.fit()
+
+        weights = model.get_item_feature_layer_weights()
+        self.assertEqual(weights[0][0][0].shape, (1, 100))
+        self.assertEqual(weights[1][0].shape, (100, 100))
+
 
 class NoHiddenConvolutionalMatrixCompletionTest(unittest.TestCase):
     def test_run(self):

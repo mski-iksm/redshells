@@ -188,7 +188,7 @@ class GraphMethods():
     @classmethod
     def get_feature_layers(cls, input_features, encoder_hidden_size, encoder_size, info_layer_activation=None):
         feature_layers = [cls._feature_convert_layer(encoder_hidden_size) for _ in input_features]
-        side_info_layer = tf.keras.layers.Dense(encoder_size, use_bias=True, activation=info_layer_activation, kernel_initializer="glorot_normal")
+        side_info_layer = tf.keras.layers.Dense(encoder_size, use_bias=False, activation=info_layer_activation, kernel_initializer="glorot_normal")
         return feature_layers, side_info_layer
 
     @staticmethod
@@ -395,6 +395,10 @@ class GraphConvolutionalMatrixCompletion(object):
         dataset = self.graph_dataset.add_dataset(additional_dataset, add_item=True)
         return self._get_feature(user_ids=user_ids, item_ids=item_ids, with_user_embedding=with_user_embedding, graph=self.graph, dataset=dataset, session=self.session, feature='item')
 
+    def get_item_side_info(self, user_ids: List, item_ids: List, additional_dataset: GcmcDataset, with_user_embedding: bool = True) -> np.ndarray:
+        dataset = self.graph_dataset.add_dataset(additional_dataset, add_item=True)
+        return self._get_feature(user_ids=user_ids, item_ids=item_ids, with_user_embedding=with_user_embedding, graph=self.graph, dataset=dataset, session=self.session, feature='item_side')
+
     @classmethod
     def _predict(cls, user_ids: List, item_ids: List, with_user_embedding, graph: AbstractGraph, dataset: GcmcGraphDataset,
                  session: tf.Session) -> np.ndarray:
@@ -483,6 +487,11 @@ class GraphConvolutionalMatrixCompletion(object):
         users, items = zip(*[(user_id, item_id) for item_id in item_ids])
         item_feature = self.get_item_feature(user_ids=users, item_ids=items, additional_dataset=additional_dataset, with_user_embedding=with_user_embedding)
         return items, item_feature
+
+    def get_item_feature_layer_weights(self):
+        if self.graph is None:
+            RuntimeError('Please call fit first.')
+        return [layer.get_weights() for layer in self.graph.item_feature_layers], self.graph.item_side_info_layer.get_weights()
 
     def _make_graph(self):
         graph = graph_picker(self.graph_type)
